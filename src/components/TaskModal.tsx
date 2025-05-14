@@ -149,11 +149,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ job, onClose, onSave }) => {
     setEditing(false);
   };
 
-  // Toggle a progress step and persist to database
+  // Toggle a progress step and save to localStorage directly (no database dependency)
   const handleStepToggle = async (stepId: string, completed: boolean) => {
     try {
       console.log(`Toggle step ${stepId} to ${completed}`);
-      
+
       // Update local state immediately for responsive UI
       setCompletedStepsMap(prev => {
         const next = { ...prev, [stepId]: completed };
@@ -166,27 +166,33 @@ const TaskModal: React.FC<TaskModalProps> = ({ job, onClose, onSave }) => {
         }
         return next;
       });
-      
-      // Persist to database
-      console.log(`Calling toggleTodo for job ${job.id}, step ${stepId}, completed ${completed}`);
-      const todo = await toggleTodo(job.id, stepId, completed);
-      
-      if (!todo) {
-        console.error('Failed to toggle todo - no response from API');
-        throw new Error('Failed to toggle todo - no response from API');
-      }
-      
-      console.log('Toggle todo succeeded:', todo);
-      
+
+      // Create todo object without database dependency
+      const now = completed ? new Date().toISOString() : null;
+      const todoId = `${job.id}_${stepId}`;
+      const todo = {
+        id: todoId,
+        job_id: job.id,
+        step_id: stepId,
+        description: '',
+        completed,
+        completed_at: now
+      };
+
+      // Store in localStorage
+      const storageKey = `todo_${job.id}_${stepId}`;
+      localStorage.setItem(storageKey, JSON.stringify(todo));
+      console.log('Saved todo to localStorage:', todo);
+
       // Update job with new todo data for parent component
-      const updatedTodos = job.todos ? 
-        job.todos.filter(t => t.step_id !== stepId).concat(todo) : 
+      const updatedTodos = job.todos ?
+        job.todos.filter(t => t.step_id !== stepId).concat(todo) :
         [todo];
-      
+
       // Log the todos before and after update
       console.log('Original todos:', job.todos);
       console.log('Updated todos:', updatedTodos);
-      
+
       // Update parent component with new job state
       const updatedJob = {
         ...job,
@@ -194,7 +200,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ job, onClose, onSave }) => {
       };
       console.log('Saving updated job:', updatedJob);
       onSave(updatedJob);
-      
+
     } catch (err) {
       console.error('Error toggling todo:', err);
       // Revert local state on error
@@ -562,37 +568,27 @@ const TaskModal: React.FC<TaskModalProps> = ({ job, onClose, onSave }) => {
                 {job.status.replace('-', ' ')}
               </span>
             </div>
-            {/* Client notification input or send button */}
+            {/* Save button for progress */}
             <div className="mt-6">
-              {notificationPhone ? (
-                <button
-                  type="button"
-                  className="w-full px-4 py-2 bg-blue-600 text-dark-50 rounded-lg hover:bg-blue-700"
-                >
-                  Send Update to Client
-                </button>
-              ) : (
-                <div className="space-y-2 p-4 bg-dark-700 rounded-lg">
-                  <label htmlFor="notificationPhone" className="block text-sm font-medium text-dark-200">
-                    Client Phone Number
-                  </label>
-                  <input
-                    id="notificationPhone"
-                    type="tel"
-                    value={notificationPhone}
-                    onChange={(e) => setNotificationPhone(e.target.value)}
-                    placeholder="+1 (555) 555-5555"
-                    className="w-full bg-dark-600 border border-dark-500 rounded-lg px-3 py-2 text-dark-50"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => onSave({ ...job, notification_phone: notificationPhone })}
-                    className="w-full px-4 py-2 bg-blue-600 text-dark-50 rounded-lg hover:bg-blue-700"
-                  >
-                    Save Phone Number
-                  </button>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  // Save the current progress for the task
+                  onSave({
+                    ...job,
+                    notification_phone: notificationPhone || job.notification_phone,
+                    // Pass along any other updated properties
+                  });
+                  // Close the modal
+                  onClose();
+                  // Reload the page to refresh the progress bar
+                  window.location.reload();
+                }}
+                className="w-full px-4 py-2 bg-blue-600 text-dark-50 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+              >
+                <Clock size={18} />
+                Save
+              </button>
             </div>
           </div>
         )}

@@ -108,7 +108,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ job, onClose }) => {
       try {
         const { data: usageData } = await supabase
           .from('job_inventory')
-          .select('quantity_used, cost_at_time, used_at, item:inventory_items(name, unit)')
+          .select('quantity_used, cost_at_time, used_at, item:inventory(name, unit)')
           .eq('job_id', job.id);
         setInventoryUsage(usageData || []);
       } catch (err) {
@@ -290,7 +290,7 @@ const InvoicePrompt: React.FC<InvoicePromptProps> = ({ job, onClose }) => {
       try {
         const { data: usageData } = await supabase
           .from('job_inventory')
-          .select('quantity_used, cost_at_time, used_at, item:inventory_items(name, unit)')
+          .select('quantity_used, cost_at_time, used_at, item:inventory(name, unit)')
           .eq('job_id', job.id);
         setInventoryUsage(usageData || []);
 

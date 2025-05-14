@@ -16,6 +16,18 @@ interface RestockModalProps {
   onRestock: (id: string, newQuantity: number) => Promise<void>;
 }
 
+interface EditItemModalProps {
+  onClose: () => void;
+  item: InventoryItem;
+  onEdit: (id: string, updates: Partial<InventoryItem>) => Promise<void>;
+}
+
+interface DeleteConfirmModalProps {
+  onClose: () => void;
+  item: InventoryItem;
+  onDelete: (id: string) => Promise<void>;
+}
+
 const AddItemModal: React.FC<AddItemModalProps> = ({ onClose, onAdd }) => {
   const [formData, setFormData] = useState<Omit<InventoryItem, 'id'>>({
     name: '',
@@ -217,6 +229,269 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ onClose, onAdd }) => {
   );
 };
 
+const EditItemModal: React.FC<EditItemModalProps> = ({ onClose, item, onEdit }) => {
+  const [formData, setFormData] = useState<Partial<InventoryItem>>({
+    name: item.name,
+    type: item.type,
+    description: item.description,
+    minimum_stock: item.minimum_stock,
+    unit: item.unit,
+    location: item.location,
+    cost_per_unit: item.cost_per_unit
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      await onEdit(item.id, formData);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update item');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'minimum_stock' || name === 'cost_per_unit'
+        ? parseFloat(value)
+        : value
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-dark-800 rounded-lg w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto border border-dark-700">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold text-dark-50">Edit {item.name}</h2>
+          <button onClick={onClose} className="text-dark-400 hover:text-dark-200">
+            <X size={20} />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1">
+              Name
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-dark-50"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1">
+              Type
+            </label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-dark-50"
+            >
+              <option value="tool">Tool</option>
+              <option value="product">Product</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              rows={3}
+              className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-dark-50"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1">
+                Current Quantity (Read-only)
+              </label>
+              <input
+                type="number"
+                value={item.quantity}
+                readOnly
+                className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-dark-400"
+              />
+              <p className="mt-1 text-xs text-dark-400">
+                Use the Restock feature to modify quantity
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1">
+                Minimum Stock
+              </label>
+              <input
+                type="number"
+                name="minimum_stock"
+                value={formData.minimum_stock}
+                onChange={handleChange}
+                min="0"
+                step="1"
+                className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-dark-50"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1">
+                Unit
+              </label>
+              <input
+                type="text"
+                name="unit"
+                value={formData.unit}
+                onChange={handleChange}
+                placeholder="e.g., pcs, liters, kg"
+                className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-dark-50"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1">
+                Cost Per Unit ($)
+              </label>
+              <input
+                type="number"
+                name="cost_per_unit"
+                value={formData.cost_per_unit}
+                onChange={handleChange}
+                min="0"
+                step="0.01"
+                className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-dark-50"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-dark-200 mb-1">
+              Storage Location
+            </label>
+            <input
+              type="text"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="e.g., Warehouse A, Shelf B3"
+              className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-dark-50"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-dark-200 hover:bg-dark-700 rounded-lg"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-dark-50 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({ onClose, item, onDelete }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await onDelete(item.id);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete item');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-dark-800 rounded-lg w-full max-w-md p-6 border border-dark-700">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-dark-50">Delete Inventory Item</h2>
+          <button onClick={onClose} className="text-dark-400 hover:text-dark-200">
+            <X size={20} />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+
+        <p className="text-dark-200 mb-6">
+          Are you sure you want to delete <span className="font-semibold text-dark-50">{item.name}</span>? This action cannot be undone.
+        </p>
+
+        {item.quantity > 0 && (
+          <div className="mb-6 bg-yellow-900/50 border border-yellow-700 text-yellow-200 px-4 py-3 rounded">
+            Warning: This item still has {item.quantity} {item.unit} in stock.
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-dark-200 hover:bg-dark-700 rounded-lg"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            className="px-4 py-2 bg-red-600 text-dark-50 rounded-lg hover:bg-red-700"
+            disabled={loading}
+          >
+            {loading ? 'Deleting...' : 'Delete Item'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const RestockModal: React.FC<RestockModalProps> = ({ onClose, item, onRestock }) => {
   const [quantity, setQuantity] = useState(item.quantity);
   const [additionalQuantity, setAdditionalQuantity] = useState(0);
@@ -335,6 +610,8 @@ const InventoryPage = () => {
   const [filterType, setFilterType] = useState<'all' | 'tool' | 'product'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [activeTab, setActiveTab] = useState<'inventory' | 'usage' | 'analysis'>('inventory');
 
@@ -436,6 +713,62 @@ const InventoryPage = () => {
       setSelectedItem(null);
     } catch (err) {
       console.error('Error restocking inventory item:', err);
+      throw err;
+    }
+  };
+
+  const handleEditItem = async (id: string, updates: Partial<InventoryItem>) => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!data) throw new Error('Failed to update inventory item');
+
+      // Refresh the inventory list
+      await fetchInventory();
+      setShowEditModal(false);
+      setSelectedItem(null);
+    } catch (err) {
+      console.error('Error updating inventory item:', err);
+      throw err;
+    }
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    try {
+      // First check if the item is used in any jobs to prevent data integrity issues
+      const { data: usageData, error: usageError } = await supabase
+        .from('job_inventory')
+        .select('id')
+        .eq('item_id', id)
+        .limit(1);
+
+      if (usageError) throw usageError;
+
+      // If the item is used in jobs, prevent deletion
+      if (usageData && usageData.length > 0) {
+        throw new Error('Cannot delete this item as it is used in one or more jobs. Consider marking it as inactive instead.');
+      }
+
+      // Proceed with deletion if there's no usage
+      const { error } = await supabase
+        .from('inventory')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Refresh the inventory list
+      await fetchInventory();
+      setShowDeleteModal(false);
+      setSelectedItem(null);
+    } catch (err) {
+      console.error('Error deleting inventory item:', err);
       throw err;
     }
   };
@@ -604,16 +937,38 @@ const InventoryPage = () => {
                     <span className="font-medium text-dark-200">
                       ${item.cost_per_unit.toFixed(2)} / {item.unit}
                     </span>
-                    <button
-                      onClick={() => {
-                        setSelectedItem(item);
-                        setShowRestockModal(true);
-                      }}
-                      className="text-blue-400 hover:text-blue-300 p-1 rounded-md hover:bg-dark-600"
-                      title="Restock"
-                    >
-                      <RefreshCw size={16} />
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setShowRestockModal(true);
+                        }}
+                        className="text-blue-400 hover:text-blue-300 p-1 rounded-md hover:bg-dark-600"
+                        title="Restock"
+                      >
+                        <RefreshCw size={16} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setShowEditModal(true);
+                        }}
+                        className="text-green-400 hover:text-green-300 p-1 rounded-md hover:bg-dark-600"
+                        title="Edit"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setShowDeleteModal(true);
+                        }}
+                        className="text-red-400 hover:text-red-300 p-1 rounded-md hover:bg-dark-600"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -748,6 +1103,28 @@ const InventoryPage = () => {
           }}
           item={selectedItem}
           onRestock={handleRestock}
+        />
+      )}
+
+      {showEditModal && selectedItem && (
+        <EditItemModal
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedItem(null);
+          }}
+          item={selectedItem}
+          onEdit={handleEditItem}
+        />
+      )}
+
+      {showDeleteModal && selectedItem && (
+        <DeleteConfirmModal
+          onClose={() => {
+            setShowDeleteModal(false);
+            setSelectedItem(null);
+          }}
+          item={selectedItem}
+          onDelete={handleDeleteItem}
         />
       )}
     </div>

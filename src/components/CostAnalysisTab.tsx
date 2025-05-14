@@ -157,7 +157,7 @@ const CostAnalysisTab: React.FC = () => {
   const [employeeCosts, setEmployeeCosts] = useState<EmployeeCost[]>([]);
   const [crewCosts, setCrewCosts] = useState<CrewCost[]>([]);
   const [inventoryCostsByType, setInventoryCostsByType] = useState<CostBreakdownItem[]>([]);
-  const [activeBreakdown, setActiveBreakdown] = useState<'category' | 'job' | 'employee' | 'crew' | 'client' | 'product' | 'all'>('category');
+  const [activeBreakdown, setActiveBreakdown] = useState<'category' | 'employee' | 'crew' | 'client' | 'product' | 'all'>('category');
   
   // Fetch all cost analysis data
   useEffect(() => {
@@ -518,15 +518,6 @@ const CostAnalysisTab: React.FC = () => {
       case 'category':
         data = costBreakdown;
         break;
-      case 'job':
-        data = topJobs.map((job, index) => ({
-          id: job.job_id,
-          name: job.job_title,
-          value: job.total_cost,
-          percentage: totalCost ? Math.round((job.total_cost / totalCost) * 100) : 0,
-          color: CHART_COLORS[index % CHART_COLORS.length]
-        }));
-        break;
       case 'employee':
         data = employeeCosts.slice(0, 5).map((emp, index) => ({
           id: emp.employee_id,
@@ -558,15 +549,7 @@ const CostAnalysisTab: React.FC = () => {
           group: 'Category'
         }));
 
-        // Top jobs
-        const jobItems = topJobs.slice(0, 3).map((job, index) => ({
-          id: `job-${job.job_id}`,
-          name: `Job: ${job.job_title}`,
-          value: job.total_cost,
-          percentage: totalCost ? Math.round((job.total_cost / totalCost) * 100) : 0,
-          color: CHART_COLORS[(index + 2) % CHART_COLORS.length],
-          group: 'Jobs'
-        }));
+        // Jobs removed from cost distribution
 
         // Top employees
         const employeeItems = employeeCosts.slice(0, 2).map((emp, index) => ({
@@ -597,10 +580,9 @@ const CostAnalysisTab: React.FC = () => {
           group: 'Products'
         }));
 
-        // Combine all items
+        // Combine all items (without jobs)
         data = [
           ...categoryItems,
-          ...jobItems,
           ...employeeItems,
           ...crewItems,
           ...productItems
@@ -728,16 +710,6 @@ const CostAnalysisTab: React.FC = () => {
                 Category
               </button>
               <button
-                onClick={() => setActiveBreakdown('job')}
-                className={`px-3 py-1 text-xs rounded-md ${
-                  activeBreakdown === 'job'
-                    ? 'bg-blue-600 text-dark-50'
-                    : 'text-dark-300 hover:text-dark-100'
-                }`}
-              >
-                Jobs
-              </button>
-              <button
                 onClick={() => setActiveBreakdown('employee')}
                 className={`px-3 py-1 text-xs rounded-md ${
                   activeBreakdown === 'employee'
@@ -814,7 +786,7 @@ const CostAnalysisTab: React.FC = () => {
         </div>
         
         <div className="bg-dark-700 rounded-lg p-4">
-          <h3 className="text-md font-medium text-dark-100 mb-4">Top Cost Entries</h3>
+          <h3 className="text-md font-medium text-dark-100 mb-4">Services Completed</h3>
           
           <div className="space-y-3">
             {topJobs.slice(0, 4).map((job, index) => (
